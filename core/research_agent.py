@@ -14,7 +14,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from langgraph.graph import START, END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.pregel import RetryPolicy
+from langgraph.types import RetryPolicy
 from .utils import sanitize_messages
 
 load_dotenv()

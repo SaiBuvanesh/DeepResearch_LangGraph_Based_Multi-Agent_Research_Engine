@@ -21,7 +21,7 @@ import json
 import random
 import time
 from langchain_core.output_parsers import PydanticOutputParser
-from langgraph.pregel import RetryPolicy
+from langgraph.types import RetryPolicy
 from .utils import sanitize_messages
 
 def apply_jitter(min_s=0.5, max_s=1.5):
