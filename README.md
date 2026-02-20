@@ -14,7 +14,7 @@ The core idea is to move beyond "reading" and start **interrogating**. The agent
 ---
 
 ## Project Demo
-<video src="Project%20Demo.mp4" width="100%" controls></video>
+[**Watch the Project Demo Video**](Project%20Demo.mp4)
 
 ---
 
