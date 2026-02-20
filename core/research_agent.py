@@ -14,6 +14,8 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from langgraph.graph import START, END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.pregel import RetryPolicy
+from .utils import sanitize_messages
 
 load_dotenv()
 def get_llm():
@@ -21,7 +23,9 @@ def get_llm():
         model=os.environ["MODEL"], 
         temperature=0.7,
         openai_api_key=os.environ["NOVITA_API_KEY"],
-        openai_api_base=os.environ["OPENAI_BASE"],  
+        openai_api_base=os.environ["OPENAI_BASE"],
+        max_retries=5,
+        timeout=60,
     )
 
     return llm 
@@ -42,9 +46,6 @@ class ResearchAgent:
         self.llm = get_llm()
         self.templatePrompt = templatePrompt
         self.report_writer_instructions = report_writer_instructions
-        print("\n\n\n\n")
-        print(self.report_writer_instructions)
-        print("\n\n\n\n")
         self.intro_conclusion_instructions = intro_conclusion_instructions
         self.interview_builder = InterviewBuilder(self.llm)
 
@@ -73,7 +74,9 @@ class ResearchAgent:
 
         formatted_str_sections = "\n\n".join([f"{section}" for section in sections])
         system_message = self.report_writer_instructions.format(topic=topic, context=formatted_str_sections, template=self.templatePrompt)
-        report = self.llm.invoke([SystemMessage(content=system_message)]+[HumanMessage(content=f"Write a report based upon these memos.")])
+        full_messages = [SystemMessage(content=system_message)] + [HumanMessage(content=f"Write a report based upon these memos.")]
+        sanitized = sanitize_messages(full_messages)
+        report = self.llm.invoke(sanitized)
         return {"content": report.content}
     
 
@@ -85,7 +88,9 @@ class ResearchAgent:
         formatted_str_sections = "\n\n".join([f"{section}" for section in sections])
 
         instructions = intro_conclusion_instructions.format(topic=topic, formatted_str_sections=formatted_str_sections)
-        intro = self.llm.invoke([instructions]+[HumanMessage(content=f"Write the report introduction")])
+        full_messages = [SystemMessage(content=instructions)] + [HumanMessage(content=f"Write the report introduction")]
+        sanitized = sanitize_messages(full_messages)
+        intro = self.llm.invoke(sanitized)
         return {"introduction": intro.content}
 
 
@@ -96,9 +101,10 @@ class ResearchAgent:
 
         formatted_str_sections = "\n\n".join([f"{section}" for section in sections])
 
-
         instructions = intro_conclusion_instructions.format(topic=topic, formatted_str_sections=formatted_str_sections)
-        conclusion = self.llm.invoke([instructions]+[HumanMessage(content=f"Write the report conclusion")])
+        full_messages = [SystemMessage(content=instructions)] + [HumanMessage(content=f"Write the report conclusion")]
+        sanitized = sanitize_messages(full_messages)
+        conclusion = self.llm.invoke(sanitized)
         return {"conclusion": conclusion.content}
 
 
@@ -125,13 +131,17 @@ class ResearchAgent:
 
     def build(self):
         builder = StateGraph(ResearchGraphState)
-        builder.add_node("create_analysts", self.interview_builder.create_analysts)
+        
+        # Define a standard retry policy for transient API errors
+        retry_policy = RetryPolicy(max_attempts=3, backoff_factor=2.0)
+        
+        builder.add_node("create_analysts", self.interview_builder.create_analysts, retry=retry_policy)
         builder.add_node("human_feedback",  self.interview_builder.human_feedback)
-        builder.add_node("conduct_interview", self.interview_builder.build().compile())
-        builder.add_node("write_report",self.write_report)
-        builder.add_node("write_introduction",self.write_introduction)
-        builder.add_node("write_conclusion",self.write_conclusion)
-        builder.add_node("finalize_report",self.finalize_report)
+        builder.add_node("conduct_interview", self.interview_builder.build().compile(), retry=retry_policy)
+        builder.add_node("write_report",self.write_report, retry=retry_policy)
+        builder.add_node("write_introduction",self.write_introduction, retry=retry_policy)
+        builder.add_node("write_conclusion",self.write_conclusion, retry=retry_policy)
+        builder.add_node("finalize_report",self.finalize_report, retry=retry_policy)
 
         builder.add_edge(START, "create_analysts")
         builder.add_edge("create_analysts", "human_feedback")

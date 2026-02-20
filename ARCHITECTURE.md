@@ -92,6 +92,16 @@ This node acts as a **Global Aggregator**.
 
 ---
 
+## Stability & Resilience Layer
+
+Research cycles often involve hundreds of API calls. To prevent systemic failures, we've implemented a "Hardened Layer":
+
+- **Exponential Backoff Retries**: Every node in the graph (from initial analyst creation to final report synthesis) is wrapped in a `RetryPolicy`. This ensures that transient network hiccups or temporary API rate limits don't crash the entire session.
+- **Traffic Jittering**: When multiple agents run in parallel (Conduct Interview phase), the system injects random sub-second delays (Jitter). This prevents "bursty" traffic patterns that often trigger provider-side protection.
+- **Global Message Sanitization**: A custom utility (`core/utils.py`) enforces strict schema validation and message role alternation before any payload hits the LLM, preventing "Invalid Request" errors common in complex multi-turn histories.
+
+---
+
 ## Visual Summary of Outputs
 
 The engine doesn't just output text; it constructs a visual document:

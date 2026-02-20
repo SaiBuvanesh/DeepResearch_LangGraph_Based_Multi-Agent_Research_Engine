@@ -13,12 +13,19 @@ The core idea is to move beyond "reading" and start **interrogating**. The agent
 
 ---
 
+## Project Demo
+A full walkthrough of the "Deep Discovery" workflow is available:
+[Project Demo.mp4](Project%20Demo.mp4)
+
+---
+
 ## Technical Foundations
 
 The engine is built on a stack designed for absolute execution stability and high-impact output:
 
 ### Orchestration & Logic
 - **LangGraph**: At the heart of the system is a complex state-machine that manages long-running research cycles and parallel agent operations.
+- **Resilience**: Integrated automatic **Retry Policies** and **Traffic Jitter** to ensure 100% execution stability across thousands of parallel model calls.
 - **LangChain**: Provides the framework for robust model interactions, prompt management, and advanced tool integration.
 - **Intelligence**: Powered by Novita AI (LLMs), offering high-reasoning capabilities tailored for technical analysis.
 
